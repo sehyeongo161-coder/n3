@@ -383,13 +383,6 @@
       margin-top: 18px;
     }
 
-    .manual-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
     .next-button { grid-column: auto; }
 
     .empty-state {
@@ -687,10 +680,6 @@
             <button id="nextButton" class="btn next-button" type="button">다음 문제</button>
           </div>
 
-          <div id="manualActions" class="manual-actions hidden" aria-label="직접 채점">
-            <button id="correctButton" class="btn success" type="button">✓ 맞음</button>
-            <button id="wrongButton" class="btn danger" type="button">✕ 틀림</button>
-          </div>
         </div>
 
         <div id="emptyState" class="empty-state hidden">
@@ -1360,9 +1349,6 @@
       submitButton: document.querySelector("#submitButton"),
       revealButton: document.querySelector("#revealButton"),
       nextButton: document.querySelector("#nextButton"),
-      manualActions: document.querySelector("#manualActions"),
-      correctButton: document.querySelector("#correctButton"),
-      wrongButton: document.querySelector("#wrongButton"),
       scopeProgress: document.querySelector("#scopeProgress"),
       todaySolved: document.querySelector("#todaySolved"),
       todayAccuracy: document.querySelector("#todayAccuracy"),
@@ -1558,7 +1544,6 @@
       elements.readingInput.removeAttribute("aria-invalid");
       elements.meaningInput.removeAttribute("aria-invalid");
       elements.answerPanel.className = "answer-panel hidden";
-      elements.manualActions.classList.add("hidden");
       elements.submitButton.disabled = false;
       elements.revealButton.disabled = false;
 
@@ -1703,27 +1688,30 @@
       applyResult(result.isCorrect);
     }
 
-    function revealCurrentAnswer({ title = "정답을 확인하고 직접 채점해 주세요.", style = "" } = {}) {
+    function revealCurrentAnswer({ title = "정답을 확인했습니다.", style = "" } = {}) {
       if (!currentItem) return;
       answerRevealed = true;
       elements.correctReading.textContent = currentItem.reading;
       elements.correctMeaning.textContent = currentItem.meaning;
       elements.feedbackTitle.textContent = title;
       elements.answerPanel.className = `answer-panel ${style}`.trim();
-      elements.manualActions.classList.remove("hidden");
       elements.submitButton.disabled = true;
       elements.revealButton.disabled = true;
       elements.nextButton.focus({ preventScroll: true });
     }
 
-    function revealAnswerWithoutGrading() {
+    function revealAnswerAsWrong() {
       if (answerRevealed || !currentItem) return;
-      revealCurrentAnswer();
+      revealCurrentAnswer({
+        title: "정답을 확인했습니다. 오답으로 자동 채점합니다.",
+        style: "wrong"
+      });
+      applyResult(false);
     }
 
     /*
-     * 제출 결과는 즉시 저장하고, 사용자가 '맞음/틀림'을 누르면 같은 문제의 기록을
-     * 덮어써서 스스로 채점할 수 있게 한다.
+     * 제출 결과는 즉시 자동 채점해 저장한다.
+     * 답을 입력하지 않고 '정답 확인'을 누른 문제는 오답으로 기록한다.
      */
     function applyResult(isCorrect) {
       if (!currentItem) return;
@@ -1763,15 +1751,15 @@
       saveProgressState();
       renderStatistics();
       renderScopeNote();
-      updateFeedbackAfterManualGrade(isCorrect);
+      updateFeedbackAfterGrading(isCorrect);
     }
 
-    function updateFeedbackAfterManualGrade(isCorrect) {
+    function updateFeedbackAfterGrading(isCorrect) {
       elements.answerPanel.classList.remove("correct", "wrong");
       elements.answerPanel.classList.add(isCorrect ? "correct" : "wrong");
       elements.feedbackTitle.textContent = isCorrect
-        ? "맞음으로 기록했습니다. ✓"
-        : "오답 목록에 저장했습니다.";
+        ? "정답입니다! 자동 채점되었습니다. ✓"
+        : "오답으로 자동 채점하고 저장했습니다.";
     }
 
     function getTodayKey() {
@@ -1927,10 +1915,8 @@
       });
 
       elements.submitButton.addEventListener("click", submitAnswer);
-      elements.revealButton.addEventListener("click", revealAnswerWithoutGrading);
+      elements.revealButton.addEventListener("click", revealAnswerAsWrong);
       elements.nextButton.addEventListener("click", goToNextQuestion);
-      elements.correctButton.addEventListener("click", () => applyResult(true));
-      elements.wrongButton.addEventListener("click", () => applyResult(false));
       elements.emptyAction.addEventListener("click", () => {
         if (reviewOnly) reviewOnly = false;
         else selectedDay = "all";
